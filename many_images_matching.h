@@ -15,7 +15,6 @@ using namespace cv;
 using namespace std;
 using namespace cv::xfeatures2d;
 
-const string defaultDetectorType = "SIFT";
 const string defaultDescriptorType = "SIFT";
 const string defaultMatcherType = "FlannBased";
 const string defaultFileWithTrainImages = "/home/javier/Documents/cv_codes/build-many_images_matching-Desktop-Release/train/trainImages.txt";
@@ -23,9 +22,8 @@ const string defaultDirToSaveResImages = "/home/javier/Documents/cv_codes/build-
 
 static void readTrainFilenames( const string& filename, string& dirName, vector<string>& trainFilenames );
 
-static bool createDetectorDescriptorMatcher( const string& detectorType, const string& descriptorType,
-                                             const string& matcherType,Ptr<Feature2D>& featureDetector,
-                                             Ptr<DescriptorMatcher>& descriptorMatcher );
+static bool createDetectorDescriptorMatcher( const string& descriptorType,const string& matcherType,
+                                             Ptr<Feature2D>& featureDetector,Ptr<DescriptorMatcher>& descriptorMatcher );
 
 static bool readImages( const string& trainFilename,vector <Mat>& trainImages,
                         vector<string>& trainImageNames,vector<view>& views);
@@ -35,8 +33,7 @@ static void detectKeypoints( const vector<Mat>& trainImages,vector<vector<KeyPoi
 static void computeDescriptors( const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints, vector<Mat>& trainDescriptors,
                                 Ptr<Feature2D> featureDetector);
 
-static void matchDescriptors(vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,vector<vector<KeyPoint> >& trainKeypoints,
-                             Ptr<DescriptorMatcher>& descriptorMatcher,vector<KeyPoint> matched1, vector<KeyPoint> matched2);
+static void matchDescriptors(vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,Ptr<DescriptorMatcher>& descriptorMatcher);
 
 static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
                               const vector<string>& trainImagesNames, const string& resultDir );
@@ -68,14 +65,14 @@ static void readTrainFilenames( const string& filename, string& dirName, vector<
     file.close();
 }
 
-static bool createDetectorDescriptorMatcher( const string& detectorType, const string& descriptorType, const string& matcherType,
+static bool createDetectorDescriptorMatcher(const string& descriptorType, const string& matcherType,
                                       Ptr<Feature2D>& featureDetector,
                                       Ptr<DescriptorMatcher>& descriptorMatcher )
 {
     cout << "< Creating feature detector, descriptor extractor and descriptor matcher ..." << endl;
 
     string Chosen_Type;
-    cout << "detectortype - (SIFT/SURF)?: ";
+    cout << "descriptorType - (SIFT/SURF)?: ";
     cin >> Chosen_Type;
 
     if (Chosen_Type == descriptorType)
@@ -156,8 +153,8 @@ static void computeDescriptors(const vector<Mat>& trainImages, vector<vector<Key
     cout << ">" << endl;
 }
 
-static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,vector<vector<KeyPoint> >& trainKeypoints, vector<DMatch>& matches,
-                             Ptr<DescriptorMatcher>& descriptorMatcher, vector<KeyPoint> matched1, vector<KeyPoint> matched2)
+static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,
+                              Ptr<DescriptorMatcher>& descriptorMatcher)
 {
     cout << "< Set train descriptors collection in the matcher and match query descriptors to them..." << endl;
     TickMeter tm;
@@ -172,7 +169,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
     double max_dist = 0;
     double min_dist = 100;
 
-    for (int i =0; i < trainDescriptors.size()-1; i++){
+    for (uint i =0; i < trainDescriptors.size()-1; i++){
         vector<DMatch> matches_aux;
         vector<DMatch> good_matches;
         descriptorMatcher->match( trainDescriptors[i],trainDescriptors[i+1], matches_aux);
@@ -188,7 +185,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         float prom = (max_dist + min_dist)/2.;
         cout << "min dist: "<< min_dist << endl;
         cout << "prom dist: " << prom << endl;
-        for(int i = 0; i < matches_aux.size(); i++)
+        for(uint i = 0; i < matches_aux.size(); i++)
         {
             if(matches_aux[i].distance <= prom*0.66 )
                 good_matches.push_back(matches_aux[i]);
@@ -201,41 +198,6 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
 
     cout << "Build time: " << buildTime << " ms; Match time: " << matchTime << " ms" << endl;
     cout << ">" << endl;
-
-
-
-    //-- Quick calculation of max and min distances between keypoints
-    /*for(int i = 0; i < queryDescriptors.rows; i++)
-    {
-        double dist = matches[i].distance;
-        if( dist < min_dist ) min_dist = dist;
-        if( dist > max_dist ) max_dist = dist;
-    }*/
-    /*
-    for(int i = 0; i < queryDescriptors.rows; i++)
-    {
-        if(matches[i].distance <= max(8*min_dist,0.9) ) //max(8*min_dist,0.9)
-            good_matches.push_back(matches[i]);
-    }*/
-/*
-    // -- Align matches into arrays (same indexes)
-    cout << "trainKeypoints.size()" << trainKeypoints.size() << endl;
-    for(int j=0; j < trainKeypoints.size(); j++)
-    {
-        cout << "j: " << j << endl;
-        train_points = trainKeypoints[j];
-        for(int i = 0; i < good_matches.size(); i++)
-        {
-            matched1.push_back(queryKeypoints[good_matches[i].queryIdx]);
-            matched2.push_back(train_points[good_matches[i].trainIdx]);
-            cout << "i :" << i << endl;
-        }
-    }*/
-
-    //TO SEE AMOUT OF GOOD MATCHES
-    //cout << "Number of good matches: " << good_matches.size() << endl;
-    //cout << ">" << endl;
-
 }
 
 static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
