@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -55,7 +56,7 @@ int main(int argc, char** argv)
     K.at<double>(2,2) = 1;
 
     //flags
-    bool flag = false;
+    bool flag = true;
 
     //flag = (argv[1] == "true")? true:false;
 
@@ -94,14 +95,16 @@ int main(int argc, char** argv)
         cout << "Saving keypoints no file..." << endl;
         string filename = "keypoints";
         FileStorage fs(filename, FileStorage::WRITE);
-        fs << "Keypoints" ;
-        for (int i = 0; i<trainKeypoints.size(); i++){
+        for (uint i = 0; i<trainKeypoints.size(); i++){
+            stringstream ss;
+            ss << i;
+            fs << "keypoints " + ss.str();
             fs << trainKeypoints[i];
-            fs << "next";
         }
 
         // explicit close
         fs.release();
+
         cout << "Write Done." << endl;
 
         computeDescriptors(trainImages, trainKeypoints, trainDescriptors,
@@ -159,6 +162,28 @@ int main(int argc, char** argv)
             return 1;
         }
 
+        int i = 0;
+
+        while(true){
+            vector<KeyPoint> Keypoints;
+            stringstream ss;
+            ss << i;
+            fs3["keypoints " + ss.str()] >> Keypoints;
+            if (Keypoints.size() != 0){
+                view vista(Keypoints);
+                views.push_back(vista);
+                i++;
+            }
+            else {
+                cout << "i :" << i-1 << endl;
+                break;
+            }
+        }
+
+         fs3.release();
+         cout << "done reading" << endl;
+         cout << "total views: " << views.size()<< endl;
     }
+
     return 0;
 }
