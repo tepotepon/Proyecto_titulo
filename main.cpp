@@ -41,8 +41,7 @@ int main(int argc, char** argv)
 
     //Matches Variables.
     //vector<DMatch> matches;
-    //vector<KeyPoint> matched1, matched2;
-    vector<vector<DMatch> > Mega_matches_aux;
+    vector<vector<DMatch> > Mega_matches;
 
     //views
     vector<view> views;
@@ -84,105 +83,34 @@ int main(int argc, char** argv)
         }
 
         //detect keypoints
-        detectKeypoints(trainImages, trainKeypoints, featureDetector);
+        detectKeypoints(trainImages, trainKeypoints, featureDetector,views);
 
-        //store keypoints on view class
-        for (uint i = 0; i<trainKeypoints.size(); i++){
-            views[i] = trainKeypoints[i];
-        }
+        computeDescriptors(trainImages, trainKeypoints, trainDescriptors,featureDetector);
 
-        //save keypoints on file
-        cout << "Saving keypoints no file..." << endl;
-        string filename = "keypoints";
-        FileStorage fs(filename, FileStorage::WRITE);
-        for (uint i = 0; i<trainKeypoints.size(); i++){
-            stringstream ss;
-            ss << i;
-            fs << "keypoints " + ss.str();
-            fs << trainKeypoints[i];
-        }
+        matchDescriptors(Mega_matches, trainDescriptors,descriptorMatcher);
 
-        // explicit close
-        fs.release();
-
-        cout << "Write Done." << endl;
-
-        computeDescriptors(trainImages, trainKeypoints, trainDescriptors,
-                           featureDetector);
-
-        matchDescriptors(Mega_matches_aux, trainDescriptors,descriptorMatcher);
-
-        //save machets into file
-        string filename2 = "matches";
-        FileStorage fs2(filename2, FileStorage::WRITE);
-
-        for (uint i = 0; i<Mega_matches_aux.size(); i++){
-            fs2 << "Matches" ;
-            fs2 << Mega_matches_aux[i];
-        }
-
-        // explicit close
-        fs2.release();
-        cout << "Write Done." << endl;
-
-
-
-
-        /*
-            // -- Align matches into arrays (same indexes)
-            cout << "trainKeypoints.size()" << trainKeypoints.size() << endl;
-            for(int j=0; j < trainKeypoints.size(); j++)
-            {
-                cout << "j: " << j << endl;
-                train_points = trainKeypoints[j];
-                for(int i = 0; i < good_matches.size(); i++)
-                {
-                    matched1.push_back(queryKeypoints[good_matches[i].queryIdx]);
-                    matched2.push_back(train_points[good_matches[i].trainIdx]);
-                    cout << "i :" << i << endl;
-                }
-            }*/
-
-
-
-        saveResultImages(Mega_matches_aux, trainImages, trainKeypoints,
-                         trainImagesNames, dirToSaveResImages);
+        //saveResultImages(Mega_matches, trainImages, trainKeypoints,trainImagesNames, dirToSaveResImages);
     }
 
     else {
-        cout << "extracting values from files..." << endl;
-        cout << endl << "Reading... " << endl;
-        FileStorage fs3;
-        string filename3 = "keypoints";
-        fs3.open(filename3, FileStorage::READ);
+        read_from_files(trainKeypoints,views,Mega_matches);
+    }
 
-        if (!fs3.isOpened())
-        {
-            cerr << "Failed to open " << filename3 << endl;
-            return 1;
+    bool first_two_flag = true;
+    vector<Point2f>imgpts1,imgpts2;
+
+    if (first_two_flag == true){
+        vector<KeyPoint> kpts1, kpts2;
+        kpts1 = trainKeypoints[0];
+        kpts2 = trainKeypoints[1];
+        vector<DMatch> maches = Mega_matches[0];
+        for( unsigned int i = 0; i<maches.size(); i++ ){
+            // queryIdx is the "left" image
+            imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
+            // trainIdx is the "right" image
+            imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
         }
-
-        int i = 0;
-
-        while(true){
-            vector<KeyPoint> Keypoints;
-            stringstream ss;
-            ss << i;
-            fs3["keypoints " + ss.str()] >> Keypoints;
-            if (Keypoints.size() != 0){
-                view vista(Keypoints);
-                views.push_back(vista);
-                i++;
-            }
-            else {
-                cout << "i :" << i-1 << endl;
-                break;
-            }
-        }
-
-         fs3.release();
-         cout << "done reading" << endl;
-         cout << "total views: " << views.size()<< endl;
+        cout << "done with de imgpts..." << endl;
     }
 
     return 0;

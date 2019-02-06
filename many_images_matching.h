@@ -28,7 +28,7 @@ static bool createDetectorDescriptorMatcher( const string& descriptorType,const 
 static bool readImages( const string& trainFilename,vector <Mat>& trainImages,
                         vector<string>& trainImageNames,vector<view>& views);
 
-static void detectKeypoints( const vector<Mat>& trainImages,vector<vector<KeyPoint> >& trainKeypoints,Ptr<Feature2D>& featureDetector );
+static void detectKeypoints( const vector<Mat>& trainImages,vector<vector<KeyPoint> >& trainKeypoints,Ptr<Feature2D>& featureDetector,vector<view> views);
 
 static void computeDescriptors( const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints, vector<Mat>& trainDescriptors,
                                 Ptr<Feature2D> featureDetector);
@@ -37,6 +37,8 @@ static void matchDescriptors(vector<vector<DMatch> >& Mega_matches_aux,const vec
 
 static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
                               const vector<string>& trainImagesNames, const string& resultDir );
+
+static void read_from_files(const vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches);
 
 
 static void readTrainFilenames( const string& filename, string& dirName, vector<string>& trainFilenames )
@@ -132,11 +134,30 @@ static bool readImages(const string& trainFilename,
 }
 
 static void detectKeypoints(const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
-                      Ptr<Feature2D>& featureDetector)
+                      Ptr<Feature2D>& featureDetector,vector<view> views)
 {
     cout << endl << "< Extracting keypoints from images..." << endl;
     featureDetector->detect( trainImages, trainKeypoints );
     cout << ">" << endl;
+
+    //store keypoints on view class
+    for (uint i = 0; i<trainKeypoints.size(); i++){
+        views[i] = trainKeypoints[i];
+    }
+
+    //save keypoints on file
+    cout << "Saving keypoints no file..." ;
+    FileStorage fs("keypoints", FileStorage::WRITE);
+    for (unsigned int i = 0; i<trainKeypoints.size(); i++){
+        stringstream ss;
+        ss << i;
+        fs << "keypoints " + ss.str();
+        fs << trainKeypoints[i];
+    }
+
+    // explicit close
+    fs.release();
+    cout << "Done." << endl << endl;
 }
 
 static void computeDescriptors(const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
@@ -156,7 +177,7 @@ static void computeDescriptors(const vector<Mat>& trainImages, vector<vector<Key
 static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,
                               Ptr<DescriptorMatcher>& descriptorMatcher)
 {
-    cout << "< Set train descriptors collection in the matcher and match query descriptors to them..." << endl;
+    cout << "matching process: " << endl;
     TickMeter tm;
 
     tm.start();
@@ -185,7 +206,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         float prom = (max_dist + min_dist)/2.;
         cout << "min dist: "<< min_dist << endl;
         cout << "prom dist: " << prom << endl;
-        for(uint i = 0; i < matches_aux.size(); i++)
+        for(unsigned int i = 0; i < matches_aux.size(); i++)
         {
             if(matches_aux[i].distance <= prom*0.66 )
                 good_matches.push_back(matches_aux[i]);
@@ -193,11 +214,26 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         cout << good_matches.size() << " good matches out of "<< matches_aux.size() << endl;
         Mega_matches_aux.push_back(good_matches);
     }
+
     tm.stop();
     double matchTime = tm.getTimeMilli();
 
     cout << "Build time: " << buildTime << " ms; Match time: " << matchTime << " ms" << endl;
-    cout << ">" << endl;
+    cout << ">" << endl << endl;
+
+    //save machets into file
+    cout << "saving matches into file...";
+    FileStorage fs2("matches", FileStorage::WRITE);
+
+    for (unsigned int i = 0; i<Mega_matches_aux.size(); i++){
+        stringstream ss;
+        ss << i;
+        fs2 << "Matches " + ss.str();
+        fs2 << Mega_matches_aux[i];
+    }
+    // explicit close
+    fs2.release();
+    cout << "done" << endl << endl;
 }
 
 static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
@@ -225,6 +261,71 @@ static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const v
         }
     }
     cout << ">" << endl;
+}
+
+static void read_from_files(vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches){
+    cout << "extracting features from file..." << endl;
+    cout << endl << "Reading... " << endl;
+    FileStorage fs3;
+    fs3.open("keypoints", FileStorage::READ);
+
+    if (!fs3.isOpened())
+    {
+        cerr << "Failed to open " << "keypoints" << endl;
+        return ;
+    }
+
+    int i = 0;
+    while(true){
+        vector<KeyPoint> Keypoints;
+        stringstream ss;
+        ss << i;
+        fs3["keypoints " + ss.str()] >> Keypoints;
+        if (Keypoints.size() != 0){
+            view vista(Keypoints);
+            views.push_back(vista);
+            trainKeypoints.push_back(Keypoints);
+            i++;
+            Keypoints.clear();
+        }
+        else {
+            i = 0;
+            break;
+        }
+    }
+    fs3.release();
+    cout << "done reading" << endl;
+
+    // READ MATCHES FILE
+    cout << "extracting matches from file..." << endl;
+    cout << endl << "Reading... " << endl;
+    FileStorage fs4;
+    fs4.open("matches", FileStorage::READ);
+
+    if (!fs4.isOpened())
+    {
+        cerr << "Failed to open " << "matches" << endl;
+        return ;
+    }
+
+    while(true){
+        vector<DMatch> maches;
+        stringstream ss;
+        ss << i;
+        fs4["Matches " + ss.str()] >> maches;
+        if (maches.size() != 0){
+            //class matches vista(Keypoints);
+            //views.push_back(vista);
+            Mega_matches.push_back(maches);
+            i++;
+            maches.clear();
+        }
+        else
+            break;
+    }
+
+    fs4.release();
+    cout << "done reading" << endl;
 }
 
 

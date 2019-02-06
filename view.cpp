@@ -22,12 +22,12 @@ view::view(string filename, Mat img)
 {
     this->File_name = filename;
     this->image = img;
-    view::numOfviews++;
 }
 
 view::view(vector<KeyPoint> keypoints)
 {
     this->Keypoints = keypoints;
+    view::numOfviews++;
 }
 
 
