@@ -12,18 +12,19 @@
 #include <utils.h>
 #include <view.h>
 #include <many_images_matching.h>
+#include <sfm.h>
 
 using namespace cv;
 using namespace std;
 using namespace cv::xfeatures2d;
 
-int main(int argc, char** argv)
+int main() //int argc, char** argv
 {
     //Global variables
     string descriptorType = defaultDescriptorType;
     string matcherType = defaultMatcherType;
     string fileWithTrainImages = defaultFileWithTrainImages;
-    string dirToSaveResImages = defaultDirToSaveResImages;
+    //string dirToSaveResImages = defaultDirToSaveResImages;
 
     //feature variables
     Ptr<Feature2D> featureDetector;
@@ -32,6 +33,7 @@ int main(int argc, char** argv)
     //Images Variables
     vector<Mat> trainImages;
     vector<string> trainImagesNames;
+    vector<Point2f>imgpts1,imgpts2;
 
     //KeyPoing Variables
     vector<vector<KeyPoint> > trainKeypoints;
@@ -46,7 +48,10 @@ int main(int argc, char** argv)
     //views
     vector<view> views;
 
-    //default camera matrix
+    //Point cloud
+    vector<Point3d> pointcloud;
+
+    //default Calibrated camera matrix
     Mat K = cv::Mat::zeros(3,3,CV_64FC1);
     K.at<double>(0,0) = 3.7930862128394227e+02;
     K.at<double>(1,1) = 3.7930862128394227e+02;
@@ -54,10 +59,21 @@ int main(int argc, char** argv)
     K.at<double>(1,2) = 240.;
     K.at<double>(2,2) = 1;
 
-    //flags
-    bool flag = true;
+    //camera matrices
+    Matx34d P1;
+    Matx34d P( 1,0, 0, 0,
+    0,1, 0, 0,
+    0,0, 1, 0);
 
-    //flag = (argv[1] == "true")? true:false;
+    //flags
+    bool work_from_saved_flag;
+
+    string Chosen_Type;
+    cout << "Starting SfM program" << endl;
+    cout << "WORK FROM SAVED FILES?: (Y/N) ";
+    cin >> Chosen_Type;
+
+    work_from_saved_flag = (Chosen_Type == "Y")? true:false;
 
     /*if(argc != 7 && argc != 1)
     {
@@ -65,7 +81,7 @@ int main(int argc, char** argv)
     }
     */
 
-    if (flag == false){
+    if (work_from_saved_flag == false){
         cout << "no saved values..." << endl
              << "starting Matching process" << endl;
         //create detector
@@ -93,25 +109,20 @@ int main(int argc, char** argv)
     }
 
     else {
+        //reads from saved files:
         read_from_files(trainKeypoints,views,Mega_matches);
     }
 
-    bool first_two_flag = true;
-    vector<Point2f>imgpts1,imgpts2;
+    //continuew with sfm.
 
-    if (first_two_flag == true){
-        vector<KeyPoint> kpts1, kpts2;
-        kpts1 = trainKeypoints[0];
-        kpts2 = trainKeypoints[1];
-        vector<DMatch> maches = Mega_matches[0];
-        for( unsigned int i = 0; i<maches.size(); i++ ){
-            // queryIdx is the "left" image
-            imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
-            // trainIdx is the "right" image
-            imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
-        }
-        cout << "done with de imgpts..." << endl;
-    }
+    //First two baseline.
+    int par = 0;
+    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,par);
+
+    TriangulatePoints(imgpts1,imgpts2, K, P, P1, pointcloud);
 
     return 0;
 }
+
+
+

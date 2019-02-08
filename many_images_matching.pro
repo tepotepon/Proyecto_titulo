@@ -19,5 +19,6 @@ HEADERS += \
     stats.h \
     utils.h \
     many_images_matching.h \
-    view.h
+    view.h \
+    sfm.h
 

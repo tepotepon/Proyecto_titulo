@@ -38,7 +38,7 @@ static void matchDescriptors(vector<vector<DMatch> >& Mega_matches_aux,const vec
 static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
                               const vector<string>& trainImagesNames, const string& resultDir );
 
-static void read_from_files(const vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches);
+void read_from_files(const vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches);
 
 
 static void readTrainFilenames( const string& filename, string& dirName, vector<string>& trainFilenames )
@@ -74,7 +74,7 @@ static bool createDetectorDescriptorMatcher(const string& descriptorType, const 
     cout << "< Creating feature detector, descriptor extractor and descriptor matcher ..." << endl;
 
     string Chosen_Type;
-    cout << "descriptorType - (SIFT/SURF)?: ";
+    cout << endl << "choose Descriptor Type: (SIFT/SURF) ";
     cin >> Chosen_Type;
 
     if (Chosen_Type == descriptorType)
@@ -194,8 +194,8 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         vector<DMatch> matches_aux;
         vector<DMatch> good_matches;
         descriptorMatcher->match( trainDescriptors[i],trainDescriptors[i+1], matches_aux);
-        cout << "-----------------------------------------------" << endl;
-        cout << "pair " << i << " - " << i+1 << " :" << matches_aux.size() << " matches" << endl;
+        //cout << "-----------------------------------------------" << endl;
+        //cout << "pair " << i << " - " << i+1 << " :" << matches_aux.size() << " matches" << endl;
 
         for(int i = 0; i < trainDescriptors[i].rows; i++)
             {
@@ -204,14 +204,14 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
                 if( dist > max_dist ) max_dist = dist;
             }
         float prom = (max_dist + min_dist)/2.;
-        cout << "min dist: "<< min_dist << endl;
-        cout << "prom dist: " << prom << endl;
+        //cout << "min dist: "<< min_dist << endl;
+        //cout << "prom dist: " << prom << endl;
         for(unsigned int i = 0; i < matches_aux.size(); i++)
         {
             if(matches_aux[i].distance <= prom*0.66 )
                 good_matches.push_back(matches_aux[i]);
         }
-        cout << good_matches.size() << " good matches out of "<< matches_aux.size() << endl;
+        //cout << good_matches.size() << " good matches out of "<< matches_aux.size() << endl;
         Mega_matches_aux.push_back(good_matches);
     }
 
