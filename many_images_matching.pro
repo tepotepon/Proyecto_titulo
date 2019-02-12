@@ -20,5 +20,6 @@ HEADERS += \
     utils.h \
     many_images_matching.h \
     view.h \
-    sfm.h
+    sfm.h \
+    cloudpoint.h
 

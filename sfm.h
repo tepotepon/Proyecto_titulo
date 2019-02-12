@@ -4,10 +4,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
-#include <stats.h>
 #include <iostream>
 #include <fstream>
 #include <string>
+
+#include "cloudpoint.h"
 
 using namespace cv;
 using namespace std;
@@ -23,12 +24,14 @@ Mat_<double> LinearLSTriangulation(
     );
 
 double TriangulatePoints(
-    const vector<Point2f>& pt_set1,
-    const vector<Point2f>& pt_set2,
+    int par,
+    vector<vector<DMatch> >& Mega_matches,
+    vector<Point2f>& pt_set1,
+    vector<Point2f>& pt_set2,
     const Mat&K,
     const Matx34d& P,
     const Matx34d& P1,
-    vector<Point3d>& pointcloud);
+    vector<CloudPoint>& pcloud);
 
 Matx34d Find_camera_matrix(
     Mat& K,
@@ -36,7 +39,24 @@ Matx34d Find_camera_matrix(
     vector<Point2f>& imgpts1,
     vector<Point2f>& imgpts2,
     vector<vector<DMatch> >& Mega_matches,
-    int par);
+    int par); //solo para los primeros 2 ... podria borrar "par"
+
+Matx34d P1_from_correspondence(
+        vector<CloudPoint>& pcloud,
+        vector<vector<KeyPoint> >&trainKeypoints,
+        vector<vector<DMatch> >& Mega_matches,
+        Mat& K,
+        Mat& distcoeff,
+        int wview,
+        int oview);
+
+void sort_imgpts(
+        int par,
+        vector<vector<KeyPoint> >& trainKeypoints,
+        vector<vector<DMatch> >& Mega_matches,
+        vector<Point2f>& imgpts1,
+        vector<Point2f>& imgpts2);
+
 
 bool CheckCoherentRotation(Mat_<double>& R){
     if(fabsf(determinant(R))-1.0 > 1e-07) {
@@ -74,16 +94,20 @@ Mat_<double> LinearLSTriangulation(
 }
 
 double TriangulatePoints(
-    const vector<Point2f>& pt_set1,
-    const vector<Point2f>& pt_set2,
+    int par,
+    vector<vector<DMatch> >& Mega_matches,
+    vector<Point2f>& pt_set1,
+    vector<Point2f>& pt_set2,
     const Mat&K,
     const Matx34d& P,
     const Matx34d& P1,
-    vector<Point3d>& pointcloud){
+    vector<CloudPoint>& pcloud){
 
     vector<double> reproj_error;
 
     Mat Kinv = K.inv();
+    vector<DMatch> maches = Mega_matches[par];
+
 
     for (unsigned int i=0; i<pt_set1.size(); i++) {
         //convert to normalized homogeneous coordinates
@@ -101,7 +125,7 @@ double TriangulatePoints(
         Mat_<double> X = LinearLSTriangulation(u,P,u1,P1);
 
         //calculate reprojection error
-        Mat X_ = cv::Mat::zeros(4,1,CV_64FC1);
+        Mat X_ = Mat::zeros(4,1,CV_64FC1);
         X_.at<double>(0,0) = X(0);
         X_.at<double>(1,0) = X(1);
         X_.at<double>(2,0) = X(2);
@@ -112,7 +136,10 @@ double TriangulatePoints(
         reproj_error.push_back(norm(xPt_img_ - pt_set2[i]));
 
         //store 3D point
-        pointcloud.push_back(Point3d(X(0),X(1),X(2)));
+        CloudPoint Point;
+        Point.pt = Point3d(X(0),X(1),X(2));
+        Point.index_of_2d_origin = vector<int>(par+1,maches[i].trainIdx);
+        pcloud.push_back(Point);
     }
 
     //return mean reprojection error
@@ -167,6 +194,82 @@ Matx34d Find_camera_matrix(
     CheckCoherentRotation(R);
 
     return (P1);
+}
+
+Matx34d P1_from_correspondence(
+        vector<CloudPoint>& pcloud,
+        vector<vector<KeyPoint> >&trainKeypoints,
+        vector<vector<DMatch> >& Mega_matches,
+        Mat& K,
+        Mat& distcoeff,
+        int wview,
+        int oview){
+
+    //check for matches between i'th frame and 0'th frame (and thus the current cloud)
+    vector<Point3f> correspondence_cloud;
+    vector<Point2f> imgPoints;
+    vector<int> pcloud_status(pcloud.size(),0);
+    vector<KeyPoint> kpts1;
+    int working_view = wview;
+    int old_view = oview;
+
+    cout << "pcloud size: " << pcloud.size() << endl;
+    kpts1 = trainKeypoints[working_view];
+
+    //scan all previews views.
+    //for (set<int>::iterator viewwewe = good_views.begin(); viewwewe != good_views.end(); ++viewwewe){
+    vector<DMatch> NaOmatches = Mega_matches[old_view];
+    //scan the 2D-2D matched-points
+    for (unsigned int iterator = 0; iterator<NaOmatches.size(); iterator++) {
+        // the index of the matching 2D point in <old_view>
+        int old_view_keypointidx = NaOmatches[iterator].queryIdx;
+        //scan existing cloud to see if this point from <old_view> exists
+        for (unsigned int some_point = 0; some_point<pcloud.size(); some_point++) {
+            // see if this 2D point from <old_view> contributed to this 3D point in the cloud
+            if (old_view_keypointidx == pcloud[some_point].index_of_2d_origin[old_view-1] && pcloud_status[some_point] == 0) //prevent duplicates
+            {
+                //3d point in cloud
+                correspondence_cloud.push_back(pcloud[some_point].pt);
+                //2d point in image <working_view>
+                Point2d pt_ = kpts1[NaOmatches[iterator].trainIdx].pt;
+                imgPoints.push_back(pt_);
+                pcloud_status[some_point] = 1;
+                break;
+            }
+        }
+    }
+    //}
+
+    cout<< endl << "found "<< correspondence_cloud.size() << "-" << imgPoints.size() <<" 3d-2d point correspondences"<<endl;
+    Mat_<double> t,rvec,R;
+    solvePnPRansac(correspondence_cloud, imgPoints, K, distcoeff, rvec, t, false);
+    //get rotation in 3x3 matrix form
+    Rodrigues(rvec, R);
+    Matx34d P1 = Matx34d(R(0,0),R(0,1),R(0,2),t(0),
+    R(1,0),R(1,1),R(1,2),t(1),
+    R(2,0),R(2,1),R(2,2),t(2));
+
+    CheckCoherentRotation(R);
+}
+
+
+void sort_imgpts(
+        int par,
+        vector<vector<KeyPoint> >& trainKeypoints,
+        vector<vector<DMatch> >& Mega_matches,
+        vector<Point2f>& imgpts1,
+        vector<Point2f>& imgpts2){
+
+    vector<KeyPoint> kpts1, kpts2;
+    kpts1 = trainKeypoints[par];
+    kpts2 = trainKeypoints[par+1];
+    vector<DMatch> maches = Mega_matches[par];
+    for( unsigned int i = 0; i<maches.size(); i++ ){
+        // queryIdx is the "left" image
+        imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
+        // trainIdx is the "right" image
+        imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
+    }
 }
 
 #endif // SFM

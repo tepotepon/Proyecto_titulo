@@ -3,13 +3,13 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
-#include <stats.h>
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <stats.h>
-#include <utils.h>
-#include <view.h>
+
+#include "stats.h"
+#include "utils.h"
+#include "view.h"
 
 using namespace cv;
 using namespace std;

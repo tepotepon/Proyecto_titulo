@@ -8,11 +8,12 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <stats.h>
-#include <utils.h>
-#include <view.h>
-#include <many_images_matching.h>
-#include <sfm.h>
+#include "stats.h"
+#include "utils.h"
+#include "view.h"
+#include "many_images_matching.h"
+#include "sfm.h"
+#include "cloudpoint.h"
 
 using namespace cv;
 using namespace std;
@@ -49,15 +50,24 @@ int main() //int argc, char** argv
     vector<view> views;
 
     //Point cloud
-    vector<Point3d> pointcloud;
+    vector<Matx34d> Cameras_matrices;
+
+    //global 3D point cloud
+    vector<CloudPoint> pcloud;
 
     //default Calibrated camera matrix
-    Mat K = cv::Mat::zeros(3,3,CV_64FC1);
+    Mat K = Mat::zeros(3,3,CV_64FC1);
     K.at<double>(0,0) = 3.7930862128394227e+02;
     K.at<double>(1,1) = 3.7930862128394227e+02;
     K.at<double>(0,2) = 320.;
     K.at<double>(1,2) = 240.;
     K.at<double>(2,2) = 1;
+
+    //default distortion_coefficients camera matrix
+    Mat distcoeff = Mat::zeros(5,1,CV_64FC1);
+    distcoeff.at<double>(0,0) = 3.1472442785745963e-01;
+    distcoeff.at<double>(1,0) = 1.2068665737088996e-01;
+    distcoeff.at<double>(4,0) = -2.3079325801519321e-02;
 
     //camera matrices
     Matx34d P1;
@@ -113,13 +123,15 @@ int main() //int argc, char** argv
         read_from_files(trainKeypoints,views,Mega_matches);
     }
 
-    //continuew with sfm.
-
     //First two baseline.
-    int par = 0;
-    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,par);
+    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,0);
+    TriangulatePoints(0,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
 
-    TriangulatePoints(imgpts1,imgpts2, K, P, P1, pointcloud);
+    imgpts1.clear();
+    imgpts2.clear();
+    P1 = P1_from_correspondence(pcloud,trainKeypoints,Mega_matches,K,distcoeff,2,1);
+    sort_imgpts(1,trainKeypoints,Mega_matches,imgpts1,imgpts2);
+    TriangulatePoints(1,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
 
     return 0;
 }
