@@ -194,8 +194,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         vector<DMatch> matches_aux;
         vector<DMatch> good_matches;
         descriptorMatcher->match( trainDescriptors[i],trainDescriptors[i+1], matches_aux);
-        //cout << "-----------------------------------------------" << endl;
-        //cout << "pair " << i << " - " << i+1 << " :" << matches_aux.size() << " matches" << endl;
+        cout << "-----------------------------------------------" << endl;
 
         for(int i = 0; i < trainDescriptors[i].rows; i++)
             {
@@ -211,7 +210,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
             if(matches_aux[i].distance <= prom*0.66 )
                 good_matches.push_back(matches_aux[i]);
         }
-        //cout << good_matches.size() << " good matches out of "<< matches_aux.size() << endl;
+        cout << good_matches.size() << " good matches out of "<< matches_aux.size() << endl;
         Mega_matches_aux.push_back(good_matches);
     }
 
@@ -264,8 +263,8 @@ static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const v
 }
 
 static void read_from_files(vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches){
-    cout << "extracting features from file..." << endl;
-    cout << endl << "Reading... " << endl;
+    cout << endl << "extracting features from file..." << endl;
+    cout << "Reading... " << endl;
     FileStorage fs3;
     fs3.open("keypoints", FileStorage::READ);
 
@@ -297,8 +296,8 @@ static void read_from_files(vector<vector<KeyPoint> >& trainKeypoints,vector<vie
     cout << "done reading" << endl;
 
     // READ MATCHES FILE
-    cout << "extracting matches from file..." << endl;
-    cout << endl << "Reading... " << endl;
+    cout << endl << "extracting matches from file..." << endl;
+    cout << "Reading... " << endl;
     FileStorage fs4;
     fs4.open("matches", FileStorage::READ);
 

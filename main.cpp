@@ -14,6 +14,15 @@
 #include "many_images_matching.h"
 #include "sfm.h"
 #include "cloudpoint.h"
+#include "cloud_to_pcldatastruct.h"
+
+
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
 
 using namespace cv;
 using namespace std;
@@ -50,7 +59,10 @@ int main() //int argc, char** argv
     vector<view> views;
 
     //Point cloud
-    vector<Matx34d> Cameras_matrices;
+    //vector<Matx34d> Cameras_matrices;
+    typedef map<int,Matx34d> MyMap;
+    MyMap Pmats;
+
 
     //global 3D point cloud
     vector<CloudPoint> pcloud;
@@ -121,17 +133,36 @@ int main() //int argc, char** argv
     else {
         //reads from saved files:
         read_from_files(trainKeypoints,views,Mega_matches);
+        cout << endl << "total views: " << views.size() << endl;
+        cout << "Mega_matches size :" << Mega_matches.size() << endl;
     }
 
     //First two baseline.
-    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,0);
+    cout << endl << "< first two baseline: " << endl ;
+    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,1);
     TriangulatePoints(0,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
+    Pmats.insert({0,P1});
+    cout << ">" << endl;
 
-    imgpts1.clear();
-    imgpts2.clear();
-    P1 = P1_from_correspondence(pcloud,trainKeypoints,Mega_matches,K,distcoeff,2,1);
-    sort_imgpts(1,trainKeypoints,Mega_matches,imgpts1,imgpts2);
-    TriangulatePoints(1,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
+    cout << P1 << endl;
+
+    for (unsigned int i = 2 ; i < views.size()-1 ; i++){
+        imgpts1.clear();
+        imgpts2.clear();
+        cout << endl << "pair of images: " << i << " - " << i-1 << endl;
+        cout << "actual pcloud size: " << pcloud.size() << endl;
+        P1 = P1_from_correspondence(pcloud,trainKeypoints,Mega_matches,K,distcoeff,i,i-1);
+        Pmats.insert({int(i-1),P1});
+        sort_imgpts(i,trainKeypoints,Mega_matches,imgpts1,imgpts2);
+        TriangulatePoints(i-1,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
+    }
+
+    // prints P elements of map
+        cout << endl << "KEY\tELEMENT\n";
+        for (MyMap::iterator itr = Pmats.begin(); itr != Pmats.end(); ++itr) {
+            cout << itr->first
+                 << '\t' << itr->second << '\n';
+        }
 
     return 0;
 }

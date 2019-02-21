@@ -64,7 +64,7 @@ bool CheckCoherentRotation(Mat_<double>& R){
         return false;
     }
     else {
-        cout << "det(R) -> valid rotation" << endl;
+        cout << "det(R) ok: valid rotation" << endl;
         return true;
     }
 }
@@ -108,7 +108,6 @@ double TriangulatePoints(
     Mat Kinv = K.inv();
     vector<DMatch> maches = Mega_matches[par];
 
-
     for (unsigned int i=0; i<pt_set1.size(); i++) {
         //convert to normalized homogeneous coordinates
 
@@ -130,10 +129,10 @@ double TriangulatePoints(
         X_.at<double>(1,0) = X(1);
         X_.at<double>(2,0) = X(2);
         X_.at<double>(3,0) = 1;
-        Mat_<double> xPt_img = K * Mat(P1) * X_;
+        Mat_<double> xPt_img = K * Mat(P) * X_;
         Point2f xPt_img_(xPt_img(0)/xPt_img(2),xPt_img(1)/xPt_img(2));
 
-        reproj_error.push_back(norm(xPt_img_ - pt_set2[i]));
+        reproj_error.push_back(norm(xPt_img_ - pt_set1[i]));
 
         //store 3D point
         CloudPoint Point;
@@ -144,7 +143,7 @@ double TriangulatePoints(
 
     //return mean reprojection error
     Scalar me = mean(reproj_error);
-    cout <<endl << "mean :" << me[0] << endl;
+    cout << "mean :" << me[0] << endl;
     return me[0];
 }
 
@@ -156,17 +155,7 @@ Matx34d Find_camera_matrix(
     vector<vector<DMatch> >& Mega_matches,
     int par){
 
-    vector<KeyPoint> kpts1, kpts2;
-    kpts1 = trainKeypoints[par];
-    kpts2 = trainKeypoints[par+1];
-    vector<DMatch> maches = Mega_matches[par];
-    for( unsigned int i = 0; i<maches.size(); i++ ){
-        // queryIdx is the "left" image
-        imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
-        // trainIdx is the "right" image
-        imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
-    }
-
+    sort_imgpts(par, trainKeypoints, Mega_matches,imgpts1,imgpts2);
     Mat status;
     Mat F = findFundamentalMat(imgpts1, imgpts2, FM_RANSAC, 0.1, 0.99, status);
     Mat_<double> E = K.t() * F * K; //according to HZ (9.12)
@@ -213,12 +202,12 @@ Matx34d P1_from_correspondence(
     int working_view = wview;
     int old_view = oview;
 
-    cout << "pcloud size: " << pcloud.size() << endl;
     kpts1 = trainKeypoints[working_view];
 
     //scan all previews views.
     //for (set<int>::iterator viewwewe = good_views.begin(); viewwewe != good_views.end(); ++viewwewe){
     vector<DMatch> NaOmatches = Mega_matches[old_view];
+
     //scan the 2D-2D matched-points
     for (unsigned int iterator = 0; iterator<NaOmatches.size(); iterator++) {
         // the index of the matching 2D point in <old_view>
@@ -240,7 +229,7 @@ Matx34d P1_from_correspondence(
     }
     //}
 
-    cout<< endl << "found "<< correspondence_cloud.size() << "-" << imgPoints.size() <<" 3d-2d point correspondences"<<endl;
+    cout<< "3d-2d points correspondences: "<< correspondence_cloud.size() <<endl;
     Mat_<double> t,rvec,R;
     solvePnPRansac(correspondence_cloud, imgPoints, K, distcoeff, rvec, t, false);
     //get rotation in 3x3 matrix form
@@ -250,8 +239,9 @@ Matx34d P1_from_correspondence(
     R(2,0),R(2,1),R(2,2),t(2));
 
     CheckCoherentRotation(R);
-}
 
+    return(P1);
+}
 
 void sort_imgpts(
         int par,
@@ -261,9 +251,9 @@ void sort_imgpts(
         vector<Point2f>& imgpts2){
 
     vector<KeyPoint> kpts1, kpts2;
-    kpts1 = trainKeypoints[par];
-    kpts2 = trainKeypoints[par+1];
-    vector<DMatch> maches = Mega_matches[par];
+    kpts1 = trainKeypoints[par-1];
+    kpts2 = trainKeypoints[par];
+    vector<DMatch> maches = Mega_matches[par-1];
     for( unsigned int i = 0; i<maches.size(); i++ ){
         // queryIdx is the "left" image
         imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
