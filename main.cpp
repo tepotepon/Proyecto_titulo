@@ -2,12 +2,20 @@
 #include <fstream>
 #include <string>
 
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include "stats.h"
 #include "utils.h"
 #include "view.h"
@@ -16,13 +24,6 @@
 #include "cloudpoint.h"
 #include "cloud_to_pcldatastruct.h"
 
-
-#include <boost/thread/thread.hpp>
-#include <pcl/common/common_headers.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/console/parse.h>
 
 using namespace cv;
 using namespace std;
@@ -52,14 +53,12 @@ int main() //int argc, char** argv
     vector<Mat> trainDescriptors;
 
     //Matches Variables.
-    //vector<DMatch> matches;
     vector<vector<DMatch> > Mega_matches;
 
     //views
     vector<view> views;
 
     //Point cloud
-    //vector<Matx34d> Cameras_matrices;
     typedef map<int,Matx34d> MyMap;
     MyMap Pmats;
 
@@ -158,12 +157,13 @@ int main() //int argc, char** argv
     }
 
     // prints P elements of map
-        cout << endl << "KEY\tELEMENT\n";
-        for (MyMap::iterator itr = Pmats.begin(); itr != Pmats.end(); ++itr) {
-            cout << itr->first
-                 << '\t' << itr->second << '\n';
-        }
+    cout << endl << "KEY\tELEMENT\n";
+    for (MyMap::iterator itr = Pmats.begin(); itr != Pmats.end(); ++itr) {
+        cout << itr->first
+             << '\t' << itr->second << '\n';
+    }
 
+    vector<Point3d> mccloud;
     return 0;
 }
 

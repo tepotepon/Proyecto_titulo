@@ -9,12 +9,14 @@ PKGCONFIG += eigen3
 
 TEMPLATE = app
 
+INCLUDEPATH += /usr/include/vtk-6.2
+INCLUDEPATH += /usr/local/include/pcl-1.8
+
+LIBS += -L/usr/lib/ -lboost_system
 LIBS += `pkg-config \
     opencv \
     --cflags \
     --libs`
-
-INCLUDEPATH += /usr/local/include/pcl-1.8
 
 SOURCES += main.cpp \
     view.cpp

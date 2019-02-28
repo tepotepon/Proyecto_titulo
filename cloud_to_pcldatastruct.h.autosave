@@ -51,7 +51,7 @@ void PopulatePCLPointCloud(
     }
 
     cloud->width = (uint32_t) cloud->points.size(); // number of points
-cloud->height = 1; // a list of points, one row of data
+    cloud->height = 1; // a list of points, one row of data
 }
 
 #endif // CLOUD_TO_PCLDATASTRUCT

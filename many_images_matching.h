@@ -35,8 +35,8 @@ static void computeDescriptors( const vector<Mat>& trainImages, vector<vector<Ke
 
 static void matchDescriptors(vector<vector<DMatch> >& Mega_matches_aux,const vector<Mat>& trainDescriptors,Ptr<DescriptorMatcher>& descriptorMatcher);
 
-static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
-                              const vector<string>& trainImagesNames, const string& resultDir );
+void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
+                              vector<string>& trainImagesNames, string& resultDir );
 
 void read_from_files(const vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches);
 
@@ -235,8 +235,8 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
     cout << "done" << endl << endl;
 }
 
-static void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, const vector<Mat>& trainImages, const vector<vector<KeyPoint> >& trainKeypoints,
-                       const vector<string>& trainImagesNames, const string& resultDir )
+void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
+                       vector<string>& trainImagesNames, string& resultDir )
 {
     cout << "< Save results..." << endl;
     Mat drawImg;
