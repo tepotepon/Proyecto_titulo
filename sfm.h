@@ -2,12 +2,6 @@
 #define SFM
 
 #include <opencv2/core.hpp>
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <string>
-
 #include "cloudpoint.h"
 
 using namespace cv;
@@ -149,13 +143,11 @@ double TriangulatePoints(
 
 Matx34d Find_camera_matrix(
     Mat& K,
-    vector<vector<KeyPoint> >& trainKeypoints,
     vector<Point2f>& imgpts1,
-    vector<Point2f>& imgpts2,
-    vector<vector<DMatch> >& Mega_matches,
-    int par){
+    vector<Point2f>& imgpts2
+        ){
 
-    sort_imgpts(par, trainKeypoints, Mega_matches,imgpts1,imgpts2);
+
     Mat status;
     Mat F = findFundamentalMat(imgpts1, imgpts2, FM_RANSAC, 0.1, 0.99, status);
     Mat_<double> E = K.t() * F * K; //according to HZ (9.12)
@@ -244,21 +236,28 @@ Matx34d P1_from_correspondence(
 }
 
 void sort_imgpts(
-        int par,
         vector<vector<KeyPoint> >& trainKeypoints,
         vector<vector<DMatch> >& Mega_matches,
-        vector<Point2f>& imgpts1,
-        vector<Point2f>& imgpts2){
+        vector<vector<Point2f> >& all_imgpts1,
+        vector<vector<Point2f> >& all_imgpts2){
 
     vector<KeyPoint> kpts1, kpts2;
-    kpts1 = trainKeypoints[par-1];
-    kpts2 = trainKeypoints[par];
-    vector<DMatch> maches = Mega_matches[par-1];
-    for( unsigned int i = 0; i<maches.size(); i++ ){
-        // queryIdx is the "left" image
-        imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
-        // trainIdx is the "right" image
-        imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
+    vector<Point2f> imgpts1;
+    vector<Point2f> imgpts2;
+    for(uint j=1; j<=Mega_matches.size() ; j++){
+        kpts1 = trainKeypoints[j-1];
+        kpts2 = trainKeypoints[j];
+        vector<DMatch> maches = Mega_matches[j-1];
+        imgpts1.clear();
+        imgpts2.clear();
+        for( unsigned int i = 0; i<maches.size(); i++ ){
+            // queryIdx is the "left" image
+            imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
+            // trainIdx is the "right" image
+            imgpts2.push_back(kpts2[maches[i].trainIdx].pt);
+        }
+        all_imgpts1.push_back(imgpts1);
+        all_imgpts2.push_back(imgpts2);
     }
 }
 

@@ -1,10 +1,6 @@
 #ifndef VIEW_H
 #define VIEW_H
 
-#include <iostream>
-#include <sstream>
-#include <string>
-
 #include <opencv2/highgui.hpp>
 
 using namespace cv;

@@ -1,8 +1,7 @@
 #ifndef CLOUDPOINT
 #define CLOUDPOINT
 
-#include <opencv2/opencv.hpp>
-#include <vector>
+#include <opencv2/core.hpp>
 #include <string>
 
 using namespace cv;

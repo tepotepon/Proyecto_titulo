@@ -1,13 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
-#include <boost/thread/thread.hpp>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
-#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/console/parse.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
 
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -15,6 +17,7 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core.hpp>
 
 #include "stats.h"
 #include "utils.h"
@@ -44,7 +47,8 @@ int main() //int argc, char** argv
     //Images Variables
     vector<Mat> trainImages;
     vector<string> trainImagesNames;
-    vector<Point2f>imgpts1,imgpts2;
+    vector<vector<Point2f> > all_imgpts1,all_imgpts2;
+    vector<Vec3b> colors;
 
     //KeyPoing Variables
     vector<vector<KeyPoint> > trainKeypoints;
@@ -62,9 +66,11 @@ int main() //int argc, char** argv
     typedef map<int,Matx34d> MyMap;
     MyMap Pmats;
 
-
     //global 3D point cloud
     vector<CloudPoint> pcloud;
+
+    //PCL 3D point cloud with color
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 
     //default Calibrated camera matrix
     Mat K = Mat::zeros(3,3,CV_64FC1);
@@ -121,51 +127,74 @@ int main() //int argc, char** argv
 
         //detect keypoints
         detectKeypoints(trainImages, trainKeypoints, featureDetector,views);
-
         computeDescriptors(trainImages, trainKeypoints, trainDescriptors,featureDetector);
-
         matchDescriptors(Mega_matches, trainDescriptors,descriptorMatcher);
-
+        sort_imgpts(trainKeypoints,Mega_matches,all_imgpts1,all_imgpts2);
+        save_colors(trainImages,all_imgpts1);
         //saveResultImages(Mega_matches, trainImages, trainKeypoints,trainImagesNames, dirToSaveResImages);
     }
 
     else {
         //reads from saved files:
         read_from_files(trainKeypoints,views,Mega_matches);
+        read_from_colors(colors);
+        sort_imgpts(trainKeypoints,Mega_matches,all_imgpts1,all_imgpts2);
         cout << endl << "total views: " << views.size() << endl;
         cout << "Mega_matches size :" << Mega_matches.size() << endl;
     }
 
     //First two baseline.
     cout << endl << "< first two baseline: " << endl ;
-    P1 = Find_camera_matrix(K,trainKeypoints,imgpts1,imgpts2,Mega_matches,1);
+    vector<Point2f> imgpts1 = all_imgpts1[0];
+    vector<Point2f> imgpts2 = all_imgpts2[0];
+    P1 = Find_camera_matrix(K,imgpts1,imgpts2);
     TriangulatePoints(0,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
     Pmats.insert({0,P1});
     cout << ">" << endl;
 
-    cout << P1 << endl;
-
-    for (unsigned int i = 2 ; i < views.size()-1 ; i++){
+    for (unsigned int i = 2 ; i < Mega_matches.size() ; i++){
         imgpts1.clear();
         imgpts2.clear();
         cout << endl << "pair of images: " << i << " - " << i-1 << endl;
         cout << "actual pcloud size: " << pcloud.size() << endl;
         P1 = P1_from_correspondence(pcloud,trainKeypoints,Mega_matches,K,distcoeff,i,i-1);
         Pmats.insert({int(i-1),P1});
-        sort_imgpts(i,trainKeypoints,Mega_matches,imgpts1,imgpts2);
+        imgpts1 = all_imgpts1[i-1];
+        imgpts2 = all_imgpts2[i];
         TriangulatePoints(i-1,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
     }
 
     // prints P elements of map
+    /*
     cout << endl << "KEY\tELEMENT\n";
     for (MyMap::iterator itr = Pmats.begin(); itr != Pmats.end(); ++itr) {
         cout << itr->first
              << '\t' << itr->second << '\n';
+    }*/
+
+
+    PopulatePCLPointCloud(pcloud,colors,cloud);
+
+    //SORFilter(cloud);
+
+    //const pcl::PointCloud<pcl::PointXYZRGB> cloud2 = cloud;
+
+    pcl::visualization::CloudViewer viewer("Cloud Viewer");
+
+    // run the cloud viewer
+    viewer.showCloud(cloud,"orig");
+
+    while (!viewer.wasStopped ())
+    {
+    // NOP
     }
 
-    vector<Point3d> mccloud;
+    pcl::io::savePCDFile( "cloud.pcd", *cloud, false ); // Binary format
+
     return 0;
 }
+
+
 
 
 

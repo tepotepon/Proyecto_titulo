@@ -6,17 +6,22 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG += link_pkgconfig
 PKGCONFIG += eigen3
+PKGCONFIG += pcl_io-1.8
+QMAKE_CXXFLAGS += -std=c++11
 
 TEMPLATE = app
 
-INCLUDEPATH += /usr/include/vtk-6.2
+
 INCLUDEPATH += /usr/local/include/pcl-1.8
+INCLUDEPATH += /usr/include/vtk-6.2
 
 LIBS += -L/usr/lib/ -lboost_system
 LIBS += `pkg-config \
     opencv \
     --cflags \
     --libs`
+
+LIBS += -lpcl_visualization \
 
 SOURCES += main.cpp \
     view.cpp

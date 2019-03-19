@@ -1,11 +1,5 @@
 #ifndef MANY_IMAGES_MATCHING_H
 #define MANY_IMAGES_MATCHING_H
-#include <opencv2/core.hpp>
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <string>
 
 #include "stats.h"
 #include "utils.h"
@@ -141,6 +135,7 @@ static void detectKeypoints(const vector<Mat>& trainImages, vector<vector<KeyPoi
     cout << ">" << endl;
 
     //store keypoints on view class
+
     for (uint i = 0; i<trainKeypoints.size(); i++){
         views[i] = trainKeypoints[i];
     }
@@ -158,6 +153,31 @@ static void detectKeypoints(const vector<Mat>& trainImages, vector<vector<KeyPoi
     // explicit close
     fs.release();
     cout << "Done." << endl << endl;
+
+}
+
+void save_colors(const vector<Mat>& trainImages, vector<vector<Point2f> >& all_imgpts1)
+{
+    FileStorage fs("colors", FileStorage::WRITE);
+    vector<Vec3b> colores;
+    for(uint i=0; i<trainImages.size()-1; i++){
+        Mat img = trainImages[i];
+        vector<Point2f> kps = all_imgpts1[i];
+        colores.clear();
+        for(uint j=0; j<kps.size(); j++){
+            Point2f point = kps[j];
+            int color = (int) img.at<uchar>(point.y,point.x);
+            Vec3b rgb(color,color,color);
+            colores.push_back(rgb);
+        }
+        stringstream ss;
+        ss << i;
+        fs << "colors " + ss.str();
+        fs << colores;
+    }
+    // explicit close
+    fs.release();
+    cout << "Don with colors." << endl << endl;
 }
 
 static void computeDescriptors(const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
@@ -313,8 +333,6 @@ static void read_from_files(vector<vector<KeyPoint> >& trainKeypoints,vector<vie
         ss << i;
         fs4["Matches " + ss.str()] >> maches;
         if (maches.size() != 0){
-            //class matches vista(Keypoints);
-            //views.push_back(vista);
             Mega_matches.push_back(maches);
             i++;
             maches.clear();
@@ -327,7 +345,41 @@ static void read_from_files(vector<vector<KeyPoint> >& trainKeypoints,vector<vie
     cout << "done reading" << endl;
 }
 
+static void read_from_colors(vector<Vec3b>& color){
+    cout << endl << "extracting colors from file..." << endl;
+    cout << "Reading... " << endl;
+    FileStorage fs3;
+    fs3.open("colors", FileStorage::READ);
 
+    if (!fs3.isOpened())
+    {
+        cerr << "Failed to open " << "colors" << endl;
+        return ;
+    }
+
+    int i = 0;
+
+    while(true){
+        vector<Vec3b> new_colors;
+        stringstream ss;
+        ss << i;
+        fs3["colors " + ss.str()] >> new_colors;
+        if (color.size() == 0)
+            color = new_colors;
+        if (new_colors.size() != 0){
+            //view vista(color);
+            //views.push_back(vista);
+            color.insert( color.end(), new_colors.begin(), new_colors.end() );
+            i++;
+            new_colors.clear();
+        }
+        else {
+            break;
+        }
+    }
+    fs3.release();
+    cout << "done reading colors" << endl;
+}
 
 #endif // MANY_IMAGES_MATCHING_H
 
