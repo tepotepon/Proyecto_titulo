@@ -34,6 +34,31 @@ void saveResultImages( vector<vector<DMatch> >& Mega_matches_aux, vector<Mat>& t
 
 void read_from_files(const vector<vector<KeyPoint> >& trainKeypoints,vector<view>& views,vector<vector<DMatch> >& Mega_matches);
 
+static bool createDetectorDescriptorMatcher(const string& descriptorType, const string& matcherType,
+                                      Ptr<Feature2D>& featureDetector,
+                                      Ptr<DescriptorMatcher>& descriptorMatcher )
+{
+    cout << "< Creating feature detector, descriptor extractor and descriptor matcher ..." << endl;
+
+    string Chosen_Type;
+    cout << endl << "choose Descriptor Type: (SIFT/SURF) ";
+    cin >> Chosen_Type;
+
+    if (Chosen_Type == descriptorType)
+        featureDetector = SIFT::create();
+    else
+        featureDetector = SURF::create();
+
+    descriptorMatcher = DescriptorMatcher::create(matcherType);
+    cout << ">" << endl;
+
+    bool isCreated = !( featureDetector.empty() ||descriptorMatcher.empty() );
+    if( !isCreated )
+        cout << "Can not create feature detector or descriptor extractor or descriptor matcher of given types." << endl << ">" << endl;
+
+    return isCreated;
+}
+
 
 static void readTrainFilenames( const string& filename, string& dirName, vector<string>& trainFilenames )
 {
@@ -61,37 +86,13 @@ static void readTrainFilenames( const string& filename, string& dirName, vector<
     file.close();
 }
 
-static bool createDetectorDescriptorMatcher(const string& descriptorType, const string& matcherType,
-                                      Ptr<Feature2D>& featureDetector,
-                                      Ptr<DescriptorMatcher>& descriptorMatcher )
-{
-    cout << "< Creating feature detector, descriptor extractor and descriptor matcher ..." << endl;
-
-    string Chosen_Type;
-    cout << endl << "choose Descriptor Type: (SIFT/SURF) ";
-    cin >> Chosen_Type;
-
-    if (Chosen_Type == descriptorType)
-        featureDetector = SIFT::create();
-    else
-        featureDetector = SURF::create();
-
-    descriptorMatcher = DescriptorMatcher::create(matcherType);
-    cout << ">" << endl;
-
-    bool isCreated = !( featureDetector.empty() ||descriptorMatcher.empty() );
-    if( !isCreated )
-        cout << "Can not create feature detector or descriptor extractor or descriptor matcher of given types." << endl << ">" << endl;
-
-    return isCreated;
-}
-
 //funcion debe ser modificada para leer pares consecutivos de imagenes.
 static bool readImages(const string& trainFilename,
                  vector <Mat>& trainImages, vector<string>& trainImageNames,vector<view>& views)
 {
     string trainDirName;
     readTrainFilenames( trainFilename, trainDirName, trainImageNames );
+
     if( trainImageNames.empty() )
     {
         cout << "Train image filenames can not be read." << endl << ">" << endl;
@@ -105,13 +106,15 @@ static bool readImages(const string& trainFilename,
     for(size_t i = 0; i < trainImageNames.size(); i++)
     {
         string filename = trainDirName + trainImageNames[i];
-        Mat img = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+        Mat img = imread(filename, 1);         
+
         if(img.empty()){
             cout << "Train image " << filename << " can not be read." << endl;
         }
         else {
             readImageCount++;
             trainImages.push_back( img );
+            //GOTTA FIX THIS SHIT 
             view vista(filename,img);
             views.push_back(vista);
         }
@@ -130,20 +133,34 @@ static bool readImages(const string& trainFilename,
 static void detectKeypoints(const vector<Mat>& trainImages, vector<vector<KeyPoint> >& trainKeypoints,
                       Ptr<Feature2D>& featureDetector,vector<view> views)
 {
-    cout << endl << "< Extracting keypoints from images..." << endl;
-    featureDetector->detect( trainImages, trainKeypoints );
-    cout << ">" << endl;
-
-    //store keypoints on view class
-
-    for (uint i = 0; i<trainKeypoints.size(); i++){
-        views[i] = trainKeypoints[i];
+    cout << "converting images to gray scale for latter keypoint extraction..." << endl; 
+    vector<Mat> gray_train; 
+    TickMeter tm;
+    tm.start();
+    for (size_t i =0 ; i < trainImages.size() ; i++){
+        Mat img; 
+        cvtColor(trainImages[i],img,COLOR_BGR2GRAY);
+        gray_train.push_back(img); 
     }
 
+    tm.stop();
+    double converting_time = tm.getTimeMilli();
+
+    tm.start();
+    cout << endl << "< Extracting keypoints from images..." << endl;
+    featureDetector->detect( gray_train, trainKeypoints );
+    cout << ">" << endl;
+    tm.stop(); 
+    double extraction_time = tm.getTimeMilli();
+
+    cout << "convertion time: " << converting_time << " ms; extraction time: " << extraction_time << " ms" << endl;
+
+    /////////////// store keypoints on view class ////////////////////
     //save keypoints on file
-    cout << "Saving keypoints no file..." ;
+    cout << "Saving keypoints into file..." ;
     FileStorage fs("keypoints", FileStorage::WRITE);
-    for (unsigned int i = 0; i<trainKeypoints.size(); i++){
+    for (size_t i = 0; i<trainKeypoints.size(); i++){
+        views[i] = trainKeypoints[i];
         stringstream ss;
         ss << i;
         fs << "keypoints " + ss.str();
@@ -160,15 +177,14 @@ void save_colors(const vector<Mat>& trainImages, vector<vector<Point2f> >& all_i
 {
     FileStorage fs("colors", FileStorage::WRITE);
     vector<Vec3b> colores;
-    for(uint i=0; i<trainImages.size()-1; i++){
+    for(size_t i=0; i<trainImages.size()-1; i++){
         Mat img = trainImages[i];
         vector<Point2f> kps = all_imgpts1[i];
         colores.clear();
-        for(uint j=0; j<kps.size(); j++){
+        for(size_t j=0; j<kps.size(); j++){
             Point2f point = kps[j];
-            int color = (int) img.at<uchar>(point.y,point.x);
-            Vec3b rgb(color,color,color);
-            colores.push_back(rgb);
+            Vec3b bgr = img.at<Vec3b>(point.y,point.x);
+            colores.push_back(bgr);
         }
         stringstream ss;
         ss << i;
@@ -210,7 +226,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
     double max_dist = 0;
     double min_dist = 100;
 
-    for (uint i =0; i < trainDescriptors.size()-1; i++){
+    for (size_t i =0; i < trainDescriptors.size()-1; i++){
         vector<DMatch> matches_aux;
         vector<DMatch> good_matches;
         descriptorMatcher->match( trainDescriptors[i],trainDescriptors[i+1], matches_aux);
@@ -225,7 +241,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
         float prom = (max_dist + min_dist)/2.;
         //cout << "min dist: "<< min_dist << endl;
         //cout << "prom dist: " << prom << endl;
-        for(unsigned int i = 0; i < matches_aux.size(); i++)
+        for(size_t i = 0; i < matches_aux.size(); i++)
         {
             if(matches_aux[i].distance <= prom*0.66 )
                 good_matches.push_back(matches_aux[i]);
@@ -244,7 +260,7 @@ static void matchDescriptors( vector<vector<DMatch> >& Mega_matches_aux,const ve
     cout << "saving matches into file...";
     FileStorage fs2("matches", FileStorage::WRITE);
 
-    for (unsigned int i = 0; i<Mega_matches_aux.size(); i++){
+    for (size_t i = 0; i<Mega_matches_aux.size(); i++){
         stringstream ss;
         ss << i;
         fs2 << "Matches " + ss.str();

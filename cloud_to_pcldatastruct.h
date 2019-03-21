@@ -7,7 +7,6 @@
 
 #include <pcl/common/common_headers.h>
 #include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <opencv2/core.hpp>
 
@@ -60,6 +59,8 @@ void PopulatePCLPointCloud(
     cloud->height = 1; // a list of points, one row of data
     cout << "done writting pcl rgb cloud" << endl ;
     cout <<"cloud->width: " << cloud->width << endl;
+
+
 }
 
 /*

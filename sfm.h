@@ -102,7 +102,7 @@ double TriangulatePoints(
     Mat Kinv = K.inv();
     vector<DMatch> maches = Mega_matches[par];
 
-    for (unsigned int i=0; i<pt_set1.size(); i++) {
+    for (size_t i=0; i<pt_set1.size(); i++) {
         //convert to normalized homogeneous coordinates
 
         Point3d u(pt_set1[i].x,pt_set1[i].y,1.0);
@@ -201,11 +201,11 @@ Matx34d P1_from_correspondence(
     vector<DMatch> NaOmatches = Mega_matches[old_view];
 
     //scan the 2D-2D matched-points
-    for (unsigned int iterator = 0; iterator<NaOmatches.size(); iterator++) {
+    for (size_t iterator = 0; iterator<NaOmatches.size(); iterator++) {
         // the index of the matching 2D point in <old_view>
         int old_view_keypointidx = NaOmatches[iterator].queryIdx;
         //scan existing cloud to see if this point from <old_view> exists
-        for (unsigned int some_point = 0; some_point<pcloud.size(); some_point++) {
+        for (size_t some_point = 0; some_point<pcloud.size(); some_point++) {
             // see if this 2D point from <old_view> contributed to this 3D point in the cloud
             if (old_view_keypointidx == pcloud[some_point].index_of_2d_origin[old_view-1] && pcloud_status[some_point] == 0) //prevent duplicates
             {
@@ -244,13 +244,13 @@ void sort_imgpts(
     vector<KeyPoint> kpts1, kpts2;
     vector<Point2f> imgpts1;
     vector<Point2f> imgpts2;
-    for(uint j=1; j<=Mega_matches.size() ; j++){
+    for(size_t j=1; j<=Mega_matches.size() ; j++){
         kpts1 = trainKeypoints[j-1];
         kpts2 = trainKeypoints[j];
         vector<DMatch> maches = Mega_matches[j-1];
         imgpts1.clear();
         imgpts2.clear();
-        for( unsigned int i = 0; i<maches.size(); i++ ){
+        for(size_t i = 0; i<maches.size(); i++ ){
             // queryIdx is the "left" image
             imgpts1.push_back(kpts1[maches[i].queryIdx].pt);
             // trainIdx is the "right" image

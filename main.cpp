@@ -3,13 +3,11 @@
 #include <string>
 #include <vector>
 
-#include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/point_types.h>
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/point_cloud.h>
 #include <pcl/io/pcd_io.h>
+
 
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -62,7 +60,7 @@ int main() //int argc, char** argv
     //views
     vector<view> views;
 
-    //Point cloud
+    //Pmat camera matrices
     typedef map<int,Matx34d> MyMap;
     MyMap Pmats;
 
@@ -152,7 +150,7 @@ int main() //int argc, char** argv
     Pmats.insert({0,P1});
     cout << ">" << endl;
 
-    for (unsigned int i = 2 ; i < Mega_matches.size() ; i++){
+    for (size_t i = 2 ; i < Mega_matches.size() ; i++){
         imgpts1.clear();
         imgpts2.clear();
         cout << endl << "pair of images: " << i << " - " << i-1 << endl;
@@ -175,21 +173,9 @@ int main() //int argc, char** argv
 
     PopulatePCLPointCloud(pcloud,colors,cloud);
 
+    pcl::io::savePCDFile("cloud.pcd",*cloud,false);
+
     //SORFilter(cloud);
-
-    //const pcl::PointCloud<pcl::PointXYZRGB> cloud2 = cloud;
-
-    pcl::visualization::CloudViewer viewer("Cloud Viewer");
-
-    // run the cloud viewer
-    viewer.showCloud(cloud,"orig");
-
-    while (!viewer.wasStopped ())
-    {
-    // NOP
-    }
-
-    pcl::io::savePCDFile( "cloud.pcd", *cloud, false ); // Binary format
 
     return 0;
 }

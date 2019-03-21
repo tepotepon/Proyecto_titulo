@@ -5,6 +5,7 @@
 
 using namespace cv;
 using namespace std;
+
 class view
 {
 private:

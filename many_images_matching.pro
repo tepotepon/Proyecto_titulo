@@ -11,7 +11,6 @@ QMAKE_CXXFLAGS += -std=c++11
 
 TEMPLATE = app
 
-
 INCLUDEPATH += /usr/local/include/pcl-1.8
 INCLUDEPATH += /usr/include/vtk-6.2
 
@@ -20,8 +19,6 @@ LIBS += `pkg-config \
     opencv \
     --cflags \
     --libs`
-
-LIBS += -lpcl_visualization \
 
 SOURCES += main.cpp \
     view.cpp
