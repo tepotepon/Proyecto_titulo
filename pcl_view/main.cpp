@@ -10,7 +10,8 @@
 
 void printUsage (const char* progName)
 {
-  std::cout << "\n\nUsage: "<<progName<<" path_to_cloud.pcd\n\n" ; 
+	std::cout << "esto no esta bien" << endl; 
+  	std::cout << "\n\nUsage: "<<progName<<" path_to_cloud.pcd\n\n" ; 
 }
 
 int main(int argc, char** argv)
