@@ -54,9 +54,8 @@ void sort_imgpts(
 Matx34d Find_camera_matrix(
     Mat& K,
     vector<Point2f>& imgpts1,
-    vector<Point2f>& imgpts2,
-    Matx34d& P
-        ){
+    vector<Point2f>& imgpts2
+    ){
 
     Mat status;
     Mat F = findFundamentalMat(imgpts1, imgpts2, FM_RANSAC, 0.1, 0.99, status);
@@ -97,6 +96,7 @@ Mat_<double> LinearLSTriangulation(
     Point3d u1,//homogenous image point in 2nd camera
     Matx34d P1//camera 2 matrix
     ){
+
     //build A matrix // esto sale de (7) triangulation .pdf
     Matx43d A(u.x*P(2,0)-P(0,0),u.x*P(2,1)-P(0,1),u.x*P(2,2)-P(0,2),
     u.y*P(2,0)-P(1,0),u.y*P(2,1)-P(1,1),u.y*P(2,2)-P(1,2),
@@ -164,8 +164,6 @@ double TriangulatePoints(
         Point.origin.push_back(par+1);
         Point.index.push_back(maches[i].trainIdx);
         pcloud.push_back(Point);
-        cout << "Point.index: " << Point.index << endl; 
-        cout << "Point.origin: " << Point.origin << endl; 
     }
 
     //return mean reprojection error

@@ -31,8 +31,8 @@ using namespace cv::xfeatures2d;
 
 const string defaultDescriptorType = "SURF";
 const string defaultMatcherType = "FlannBased";
-const string defaultFileWithTrainImages = "../../train/trainImages.txt";
-const string defaultDirPCD = "../../Clouds/"
+const string defaultFileWithTrainImages = "../../photo_secuences/train/trainImages.txt";
+const string defaultDirPCD = "../../Clouds/";
 
 
 int main() //int argc, char** argv
@@ -42,6 +42,7 @@ int main() //int argc, char** argv
     string matcherType = defaultMatcherType;
     string fileWithTrainImages = defaultFileWithTrainImages;
     string PCDdir = defaultDirPCD;
+    string pcd_path;
 
     //feature variables
     Ptr<Feature2D> featureDetector;
@@ -132,14 +133,11 @@ int main() //int argc, char** argv
 
         cout << "wish to save matching results? (Y/N): ";
         string save_aux; 
-        cin >> save_aux
-        bool save_images_flag = (save_aux == "Y")? true:false;
+        bool save_images_flag;
+        cin >> save_aux;
+        save_images_flag = (save_aux == "Y")? true:false;
         if (save_images_flag == true){
-            string path = "../../matching_results/";
-            string sa; 
-            cout << "save as: "; 
-            cin >> sa; 
-            string dirToSaveResImages = path + sa; 
+            string dirToSaveResImages = "../../matching_results/results";
             saveResultImages(Mega_matches, trainImages, trainKeypoints,trainImagesNames, dirToSaveResImages);
         }
     }
@@ -157,21 +155,20 @@ int main() //int argc, char** argv
     cout << "enter pcd file name: "; 
     cin >> NameToSavePCD;
     cout << "wish to save incrementally? (Y/N): "; 
-    cin << incremental_res; 
+    cin >> incremental_res;
     incremental_flag = (incremental_res == "Y")? true:false;
 
     //First two baseline.
     Pmats.insert({0,P});
     cout << endl << "< first two baseline: " << endl ;
     sort_imgpts(trainKeypoints[0],trainKeypoints[1],Mega_matches[0],all_colors[0],imgpts1,imgpts2, actual_colors);
-    P1 = Find_camera_matrix(K,imgpts1,imgpts2,P);
+    P1 = Find_camera_matrix(K,imgpts1,imgpts2);
     TriangulatePoints(0,Mega_matches,imgpts1,imgpts2, K, P, P1, pcloud);
     Pmats.insert({1,P1});
     cout << ">" << endl;
     PopulatePCLPointCloud(pcloud,actual_colors,final_cloud);
 
-    if(incremental_flag == true) {
-        string pcd_path; 
+    if(incremental_flag == true) { 
         pcd_path = PCDdir + NameToSavePCD;
         pcl::io::savePCDFile(pcd_path,*final_cloud,false);
     }
@@ -186,15 +183,16 @@ int main() //int argc, char** argv
         sort_imgpts(trainKeypoints[i],trainKeypoints[i+1],Mega_matches[i],all_colors[i],imgpts1,imgpts2, actual_colors);
         TriangulatePoints(i,Mega_matches,imgpts1,imgpts2, K, Pmats[i], P1, pcloud);
         PopulatePCLPointCloud(pcloud,actual_colors,final_cloud);
-        // AGREGAR INCREMENTAL SAVE
+
         if (incremental_flag == true) {
-            string next_save = pcd_path + string(i); 
+            stringstream numb;
+            numb << i;
+            string next_save = pcd_path + numb.str(); 
             pcl::io::savePCDFile(next_save,*final_cloud,false);
         }
     }
 
     if(incremental_flag == false) {
-        string pcd_path; 
         pcd_path = PCDdir + NameToSavePCD;
         pcl::io::savePCDFile(pcd_path,*final_cloud,false);
     }
